@@ -25,7 +25,7 @@ class JOSHConfig:
     num_frames: int = 0
     img_idx: list = field(default_factory=list)
     conf_thres: float = 0.1
-    use_depth_model: bool = True
+    use_depth_model: bool = False
     update_correspondences: bool = False
     depth_filter_ratio: float = 1.01
     visualize_results: bool = True

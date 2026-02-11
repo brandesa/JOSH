@@ -47,6 +47,7 @@ env/
 
 # local data folder
 data/*
+assets/*
 
 # local experiment folder
 experiments/*
