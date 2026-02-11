@@ -227,6 +227,7 @@ if __name__ == "__main__":
     parser.add_argument("--start_frame", type=int, default=cfg.start_frame)
     parser.add_argument("--num_frames", type=int, default=cfg.num_frames)
     parser.add_argument("--visualize", action="store_true")
+    parser.add_argument("--range", type=int, nargs=2, default=[0, 100], help="Range of images to save (e.g., 0 100 for the first 100 images).")
 
     args = parser.parse_args()
     cfg.input_folder = args.input_folder
@@ -239,14 +240,19 @@ if __name__ == "__main__":
     result = inference(scene_model=scene_model, device=device, cfg=cfg)
     save_result = {}
     save_result["eval_metrics"] = result.eval_metrics
-    save_result["pred_cam"] = np.stack([x["pred_cam"] for x in result.frame_result], axis=0)
-    save_result["depth_hw"] = np.stack([x["depth_hw"] for x in result.frame_result if "depth_hw" in x], axis=0)
-    save_result["rgb_hw3"] = np.stack([x["rgb_hw3"] for x in result.frame_result if "rgb_hw3" in x], axis=0)
-    save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
+    # save_result["pred_cam"] = np.stack([x["pred_cam"] for x in result.frame_result], axis=0)
+    # save_result["depth_hw"] = np.stack([x["depth_hw"] for x in result.frame_result if "depth_hw" in x], axis=0)
+    # save_result["rgb_hw3"] = np.stack([x["rgb_hw3"] for x in result.frame_result if "rgb_hw3" in x], axis=0)
+    # save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
     save_result["intrinsics"] = result.intrinsics
     save_result["img_idx"] = cfg.img_idx
+    save_result["img_size"] = result.img_size
+    save_result["point_cloud"] = result.point_cloud
+    save_result["mesh"] = result.mesh
+    save_result["frame_result"] = result.frame_result
+    save_result["range"] = args.range
 
-    result_file_name = os.path.join(cfg.input_folder, cfg.output_folder, "scene.pkl")
+    result_file_name = os.path.join(cfg.input_folder, cfg.output_folder, f"scene_{args.range[0]}_{args.range[1]}.pkl")
     joblib.dump(save_result, result_file_name)
 
     if cfg.visualize_results:

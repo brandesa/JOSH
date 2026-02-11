@@ -117,7 +117,11 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
         pred_smpl_dict['pred_rotmat'] = pred_rotmat
         pred_smpl_dict['pred_shape'] = pred_shape
         pred_smpl_dict['pred_trans'] = pred_trans.unsqueeze(1)
-        np.save(smpl_file.replace('tram', 'josh'), pred_smpl_dict)
+        
+        output_path = os.path.join(file_info['folder'], smpl_file.split('/')[-1])
+        print(f"Saving aggregated SMPL results to {output_path}, file info: {file_info['folder']}, {smpl_file.split('/')[-1]}")
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        np.save(output_path, pred_smpl_dict)
 
         tt = lambda x: torch.Tensor(x).float()
         smpl = SMPL(model_path="data/smpl")

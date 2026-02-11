@@ -270,3 +270,58 @@ def load_images_as_tensor(path='data/truck', interval=1, PIXEL_LIMIT=255000, tar
 
     # --- 4. Stack the list of tensors into a single [N, C, H, W] batch tensor ---
     return torch.stack(tensor_list, dim=0)
+
+
+
+def save_images_to_folder(input_folder_path: str, output_folder_path: str, r: list):
+    """
+    Saves an array of images to a specified folder, with enumerated filenames.
+
+    Args:
+        images_array (np.ndarray): A NumPy array of images, expected to be of shape 
+                                   (N, H, W, 3) for RGB or (N, H, W) for grayscale,
+                                   where N is the number of images.
+                                   Values should be in the range [0, 255].
+        output_folder_path (str): The path to the directory where the images will be saved.
+    """
+    data = np.load(input_folder_path, allow_pickle=True)
+    images_array = data['aria_obs_rgb_imgs']
+
+    try:
+        # Ensure the output directory exists
+        os.makedirs(output_folder_path, exist_ok=True)
+        clear_folder(output_folder_path)
+
+        num_images = images_array.shape[0]
+
+        for i in range(r[0], min(r[1], num_images)):
+            image_array = images_array[i]
+            
+            # Convert NumPy array to a PIL Image
+            if image_array.ndim == 3 and image_array.shape[2] == 3:
+                image = Image.fromarray(image_array.astype(np.uint8), 'RGB')
+            elif image_array.ndim == 2:
+                image = Image.fromarray(image_array.astype(np.uint8), 'L') # Grayscale
+            else:
+                print(f"[ERROR] Unsupported image array shape for image {i}: {image_array.shape}")
+                continue
+
+            # Construct the filename with zero-padding
+            file_name = f"{(i-r[0]):06d}.jpg"
+            full_path = os.path.join(output_folder_path, file_name)
+
+            # Save the image
+            image.save(full_path, 'JPEG', quality=95)
+            
+        print(f"[INFO] Saved {(i-r[0])+1} images to {output_folder_path}")
+
+    except Exception as e:
+        print(f"[ERROR] Failed to save images: {e}")
+
+
+def clear_folder(output_folder_path):
+    for filename in os.listdir(output_folder_path):
+            file_path = os.path.join(output_folder_path, filename)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                
