@@ -79,3 +79,4 @@ dist/
 *.pkl
 .dist_tmp
 **.egg-info
+third_party/mast3r
