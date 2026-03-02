@@ -28,7 +28,7 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
         if match:
             start_frame = int(match.group(1))
             end_frame = int(match.group(2))
-            scene_file = os.path.join(folder, "scene.pkl")
+            scene_file = os.path.join(folder, f"scene_{start_frame}_{end_frame}.pkl")
             if os.path.exists(scene_file):
                 folder_info.append({'folder': folder, 'start_frame': start_frame, 'end_frame': end_frame, 'scene_file': scene_file})
 

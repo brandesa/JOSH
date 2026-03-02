@@ -9,33 +9,34 @@ from glob import glob
 GPUS = [0]
 
 
-def run(input_folder, start_frame, log_file):
+def run(input_folder, start_frame, log_file, interval_length):
     cur_proc = mp.current_process()
     print("PROCESS", cur_proc.name, cur_proc._identity)
     worker_id = cur_proc._identity[0] - 1  # 1-indexed processes
     gpu = GPUS[worker_id % len(GPUS)]
     cmd = (f"CUDA_VISIBLE_DEVICES={gpu} "
-           f"python josh/inference.py --input_folder {input_folder} --start_frame {start_frame} --num_frames 21")
+           f"python josh/inference.py --input_folder {input_folder} --start_frame {start_frame} --range {start_frame} {start_frame + interval_length}")
     print(f"LOGGING TO {log_file}")
     cmd = f"{cmd} > {log_file} 2>&1"
     print(cmd)
     subprocess.call(cmd, shell=True)
 
 
-def main(input_folder):
+def main(input_folder, interval_length):
     log_dir = f"{input_folder}/logs"
     os.makedirs(log_dir, exist_ok=True)
     with futures.ProcessPoolExecutor(max_workers=len(GPUS)) as exe:
         num_frames = len(glob(f"{input_folder}/rgb/*.jpg"))
         start_frame = 0
-        while num_frames - start_frame > 100:
+        while num_frames - start_frame > interval_length:
             log_file = f"{log_dir}/{start_frame}.log"
-            exe.submit(run, input_folder, start_frame, log_file)
-            start_frame += 100
+            exe.submit(run, input_folder, start_frame, log_file, interval_length)
+            start_frame += interval_length
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--input_folder", type=str)
+    parser.add_argument("--interval_length", type=int, default=100)
     args = parser.parse_args()
-    main(args.input_folder)
+    main(args.input_folder, args.interval_length)

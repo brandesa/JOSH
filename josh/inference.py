@@ -140,6 +140,11 @@ def inference(scene_model, device, cfg: JOSHConfig) -> OptimizedResult:
     mask_files = sorted(glob.glob(os.path.join(cfg.input_folder, "mask", "*.png")))
     import tempfile
 
+    print(f"Found {len(img_files)} images and {len(mask_files)} masks.")
+    print(f"Max frames: {cfg.max_frames}")
+    print(f"Start frame: {cfg.start_frame}")
+    print(f"Opt interval: {cfg.opt_interval}")
+
     # cache_dir = tempfile.mkdtemp()
     cache_dir = "data/mast3r_results"
     assert len(img_files) == len(mask_files)
@@ -225,14 +230,14 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--input_folder", type=str, default=cfg.input_folder)
     parser.add_argument("--start_frame", type=int, default=cfg.start_frame)
-    parser.add_argument("--num_frames", type=int, default=cfg.num_frames)
     parser.add_argument("--visualize", action="store_true")
     parser.add_argument("--range", type=int, nargs=2, default=[0, 100], help="Range of images to save (e.g., 0 100 for the first 100 images).")
 
     args = parser.parse_args()
     cfg.input_folder = args.input_folder
     cfg.start_frame = args.start_frame
-    cfg.num_frames = args.num_frames
+    cfg.max_frames = (args.range[1] - args.range[0]) // cfg.opt_interval + 1
+    print(f"Processing frames from {args.range[0]} to {args.range[1]}, total {cfg.max_frames} frames.")
     cfg.visualize_results = args.visualize
     device = "cuda" if torch.cuda.is_available() else "cpu"
     scene_model = AsymmetricMASt3R.from_pretrained("naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric").to(device).eval()
@@ -240,10 +245,10 @@ if __name__ == "__main__":
     result = inference(scene_model=scene_model, device=device, cfg=cfg)
     save_result = {}
     save_result["eval_metrics"] = result.eval_metrics
-    # save_result["pred_cam"] = np.stack([x["pred_cam"] for x in result.frame_result], axis=0)
-    # save_result["depth_hw"] = np.stack([x["depth_hw"] for x in result.frame_result if "depth_hw" in x], axis=0)
-    # save_result["rgb_hw3"] = np.stack([x["rgb_hw3"] for x in result.frame_result if "rgb_hw3" in x], axis=0)
-    # save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
+    save_result["pred_cam"] = np.stack([x["pred_cam"] for x in result.frame_result], axis=0)
+    save_result["depth_hw"] = np.stack([x["depth_hw"] for x in result.frame_result if "depth_hw" in x], axis=0)
+    save_result["rgb_hw3"] = np.stack([x["rgb_hw3"] for x in result.frame_result if "rgb_hw3" in x], axis=0)
+    save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
     save_result["intrinsics"] = result.intrinsics
     save_result["img_idx"] = cfg.img_idx
     save_result["img_size"] = result.img_size

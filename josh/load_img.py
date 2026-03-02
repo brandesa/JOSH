@@ -17,7 +17,9 @@ if __name__ == "__main__":
     img_folder = args.output_folder_path + "/rgb"
     if not os.path.exists(img_folder):
         os.makedirs(img_folder)
-        
-    clear_folder(args.output_folder_path + "/mask")
-    clear_folder(args.output_folder_path + "/vis")
+    
+    if os.path.exists(args.output_folder_path + "/mask"):
+        clear_folder(args.output_folder_path + "/mask")
+    if os.path.exists(args.output_folder_path + "/vis"):
+        clear_folder(args.output_folder_path + "/vis")
     save_images_to_folder(args.input_folder_path, img_folder, args.range)

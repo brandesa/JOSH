@@ -136,7 +136,7 @@ def load_images_and_masks(
     remaining_num = len(image_files) - start_frame
 
     # Hardcoded
-    if remaining_num < 1 + interval * (max_num - 1) * 2:
+    if remaining_num < interval * (max_num - 1) + 1:
         num_frames = remaining_num
     else:
         num_frames = 1 + interval * (max_num - 1)
@@ -294,7 +294,7 @@ def save_images_to_folder(input_folder_path: str, output_folder_path: str, r: li
 
         num_images = images_array.shape[0]
 
-        for i in range(r[0], min(r[1], num_images)):
+        for i in range(r[0], min(r[1]+1, num_images)):
             image_array = images_array[i]
             
             # Convert NumPy array to a PIL Image

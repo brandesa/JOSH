@@ -21,11 +21,11 @@ class JOSHConfig:
     scene_graph: str = "window-10"
     opt_interval: int = 5
     start_frame: int = 0
-    max_frames: int = 21
+    max_frames: int = 11
     num_frames: int = 0
     img_idx: list = field(default_factory=list)
     conf_thres: float = 0.1
-    use_depth_model: bool = False
+    use_depth_model: bool = True
     update_correspondences: bool = False
     depth_filter_ratio: float = 1.01
     visualize_results: bool = True

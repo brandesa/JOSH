@@ -86,4 +86,10 @@ If our work is helpful to your research, please cite the following:
     journal={The Fourteenth International Conference on Learning Representations},
     year={2026}
 } 
+
 ```
+
+
+### EgoHTG Demo 
+
+bash josh_run.sh ../human_terrain_generation/data/sequences/walking_s2_gym_01/full_sequence.npz  data/runs/walking-s2-gym 0 300
