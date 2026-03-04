@@ -32,14 +32,14 @@ def log_optimized_result(optimized_result: OptimizedResult, parent_log_path: Pat
     colors = generate_colors(n_colors=128, n_samples=5000)
     rr.log(f"{parent_log_path}", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
     # log pointcloud
-    rr.log(
-        f"{parent_log_path}/pointcloud",
-        rr.Points3D(
-            positions=optimized_result.point_cloud.vertices,
-            colors=optimized_result.point_cloud.colors,
-        ),
-        static=True,
-    )
+    # rr.log(
+    #     f"{parent_log_path}/pointcloud",
+    #     rr.Points3D(
+    #         positions=optimized_result.point_cloud.vertices,
+    #         colors=optimized_result.point_cloud.colors,
+    #     ),
+    #     static=True,
+    # )
 
     mesh = optimized_result.mesh
     if mesh is not None:

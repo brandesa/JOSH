@@ -83,16 +83,28 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
     conf = np.logical_and(conf > cfg.conf_thres, all_depths.flatten() > 0)
     points = points[conf]
     colors = all_colors.reshape(-1, 3)[conf]
+    #random downsample points and colors for visualization
+    if points.shape[0] > 100000:
+        idx = np.random.choice(points.shape[0], 100000, replace=False)
+        points = points[idx]
+        colors = colors[idx]
 
-    pred_pcd = open3d.geometry.PointCloud()
-    pred_pcd.points = open3d.utility.Vector3dVector(points)
-    pred_pcd.colors = open3d.utility.Vector3dVector(colors)
-    down_pred_pcd = pred_pcd.voxel_down_sample(voxel_size=0.01)  # downsampling
-    point_cloud = trimesh.PointCloud(np.asarray(down_pred_pcd.points), np.asarray(down_pred_pcd.colors))
+    # pred_pcd = open3d.geometry.PointCloud()
+    # pred_pcd.points = open3d.utility.Vector3dVector(points)
+    # pred_pcd.colors = open3d.utility.Vector3dVector(colors)
+    # down_pred_pcd = pred_pcd.voxel_down_sample(voxel_size=0.01)  # downsampling
+    # point_cloud = trimesh.PointCloud(np.asarray(down_pred_pcd.points), np.asarray(down_pred_pcd.colors))
 
     # aggregate smpl results
     pred_cam = pred_cams
-    smpl_files = sorted(glob(os.path.join(input_folder, "tram", "*.npy")))
+
+    # Sort .npy files by their numeric suffix (handles filenames like hps_track_0600.npy)
+    def _numeric_suffix(path):
+        name = os.path.basename(path)
+        m = re.search(r"(\d+)(?=\.npy$)", name)
+        return int(m.group(1)) if m else -1
+
+    smpl_files = sorted(glob(os.path.join(input_folder, "tram", "*.npy")), key=_numeric_suffix)
     pred_smpls = []
     pred_contacts = []
     pred_frames = []
@@ -104,7 +116,9 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
         pred_rotmat = pred_smpl_dict['pred_rotmat']
         pred_shape = pred_smpl_dict['pred_shape']
         pred_trans = pred_smpl_dict['pred_trans'].squeeze(1)
-        pred_frame = pred_smpl_dict['frame'].tolist()
+        pred_frame = pred_smpl_dict['frame']
+
+        #iterate through tram file and get shape estimate (frames 0-600)
         for file_info in folder_info:
             if not os.path.exists(os.path.join(file_info['folder'], smpl_file.split("/")[-1])):
                 continue
@@ -114,14 +128,26 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
             pred_shape[frame_mask] = josh_smpl_dict['pred_shape']
             pred_trans[frame_mask] = josh_smpl_dict['pred_trans'].squeeze(1)
 
+        #adjust frame according to the amount of chunks
+        frames = pred_smpl_dict['frame'] + i * (pred_smpl_dict['frame'].shape[0] - 1)
+        pred_frame = (pred_smpl_dict['frame'] + i * (pred_smpl_dict['frame'].shape[0] - 1)).tolist()
+
+        # if len(smpl_file) > 1:
+        #     if len(smpl_file)-1 != i:
+        #         pred_rotmat = pred_rotmat[:-1]
+        #         pred_shape = pred_shape[:-1]
+        #         pred_trans = pred_trans[:-1]
+        #         frames = frames[:-1]
+
+
         pred_smpl_dict['pred_rotmat'] = pred_rotmat
         pred_smpl_dict['pred_shape'] = pred_shape
         pred_smpl_dict['pred_trans'] = pred_trans.unsqueeze(1)
         
-        output_path = os.path.join(file_info['folder'], smpl_file.split('/')[-1])
-        print(f"Saving aggregated SMPL results to {output_path}, file info: {file_info['folder']}, {smpl_file.split('/')[-1]}")
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        np.save(output_path, pred_smpl_dict)
+        # output_path = os.path.join(file_info['folder'], smpl_file.split('/')[-1])
+        # print(f"Saving aggregated SMPL results to {output_path}, file info: {file_info['folder']}, {smpl_file.split('/')[-1]}")
+        # os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        # np.save(output_path, pred_smpl_dict)
 
         tt = lambda x: torch.Tensor(x).float()
         smpl = SMPL(model_path="data/smpl")
@@ -145,7 +171,7 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
 
         smpl_global_trans = torch.einsum("bij, bjk->bik",
                                          torch.tensor(
-                                             pred_cam_torch[pred_smpl_dict['frame'] - cfg.start_frame],
+                                             pred_cam_torch[frames - cfg.start_frame],
                                              device=smpl_local_trans.device,
                                          ), smpl_local_trans)
 
@@ -174,7 +200,7 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
 
     # add smpl mesh in global
     pred_smpl_mesh = {x: [] for x in range(len(pred_cams))}
-    pred_joints_all = []
+    pred_joints_all = { x: [] for x in range(len(pred_cams))}
 
     for pred_id, pred_smpl, pred_frame, pred_contact in zip(pred_ids, pred_smpls, pred_frames, pred_contacts):
         for i in range(len(pred_cams)):
@@ -184,14 +210,16 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
                 pred_vertices = pred_smpl.vertices[frame]
                 pred_joints = pred_smpl.joints[frame, :24]
 
-                pred_smpl_mesh[i].append([pred_id, trimesh.Trimesh(vertices=pred_vertices[:, :3], faces=smpl.faces), pred_contact[frame]])
-                pred_joints_all.append(pred_joints[:, :3])
+                if pred_smpl_mesh[i] == []:
+                    pred_smpl_mesh[i].append([pred_id, trimesh.Trimesh(vertices=pred_vertices[:, :3], faces=smpl.faces), pred_contact[frame]])
+                    pred_joints_all[i].append(pred_joints[:, :3])
 
     frame_results = []
-
+    print(f"JOints predicted for {sum([len(pred_joints_all[i]) for i in range(len(pred_cams))])} frames out of {len(pred_cams)} total frames.")
     for i in range(len(pred_cams)):
         frame_result = OptimizedFrameResult(frame_idx=i, pred_cam=pred_cams[i])
         frame_result["pred_smpl"] = pred_smpl_mesh[i]
+        frame_result["pred_joints"] = pred_joints_all[i]
 
         if i in all_idx:
             idx = all_idx.index(i)
@@ -202,7 +230,7 @@ def aggregate_results(input_folder, cfg: JOSHConfig) -> OptimizedResult:
         frame_results.append(frame_result)
 
     optimised_result = OptimizedResult(
-        point_cloud=point_cloud,
+        point_cloud=None,
         mesh=None,
         intrinsics=all_intrinsics,  # intrinsics is fixed
         img_size=(all_colors[0].shape[1], all_colors[0].shape[0]),
@@ -220,6 +248,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--input_folder", type=str, default=cfg.input_folder)
     parser.add_argument("--visualize", action="store_true")
+    parser.add_argument("--range", type=int, nargs=2, default=[0, 100], help="Range of images to save (e.g., 0 100 for the first 100 images).")
     args = parser.parse_args()
     cfg.input_folder = args.input_folder
     cfg.visualize_results = args.visualize
@@ -229,13 +258,17 @@ if __name__ == "__main__":
     save_result = {}
     save_result["eval_metrics"] = result.eval_metrics
     save_result["pred_cam"] = np.stack([x["pred_cam"] for x in result.frame_result], axis=0)
-    save_result["depth_hw"] = np.stack([x["depth_hw"] for x in result.frame_result if "depth_hw" in x], axis=0)
+    # save_result["depth_hw"] = np.stack([x["depth_hw"] for x in result.frame_result if "depth_hw" in x], axis=0)
     save_result["rgb_hw3"] = np.stack([x["rgb_hw3"] for x in result.frame_result if "rgb_hw3" in x], axis=0)
-    save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
+    # save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
     save_result["intrinsics"] = result.intrinsics
     save_result["img_idx"] = all_idx
+    save_result["pred_smpl"] = [x["pred_smpl"] for x in result.frame_result]
+    save_result["pred_joints"] = [x["pred_joints"] for x in result.frame_result]
+    # save_result["point_cloud"] = result.point_cloud
+    save_result["img_size"] = result.img_size
 
-    result_file_name = os.path.join(cfg.input_folder, cfg.output_folder, "scene.pkl")
+    result_file_name = os.path.join(cfg.input_folder, cfg.output_folder, f"scene_{args.range[0]}_{args.range[1]}.pkl")
     joblib.dump(save_result, result_file_name)
 
     if cfg.visualize_results:

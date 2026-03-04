@@ -93,3 +93,10 @@ If our work is helpful to your research, please cite the following:
 ### EgoHTG Demo 
 
 bash josh_run.sh ../human_terrain_generation/data/sequences/walking_s2_gym_01/full_sequence.npz  data/runs/walking-s2-gym 0 300
+
+
+cd /home/brandesa/mt/JOSH/data/runs/walking-s2-gym-agg && for f in *.pkl; do [ -f "$f" ] || continue; d="${f%.pkl}"; mkdir -p "$d"; mv "$f" "$d/"; done
+
+cd /home/brandesa/mt/JOSH/data/runs/walking-s2-gym-agg && for d in scene_*; do [ -d "$d" ] || continue; mv "$d" "josh_${d#scene_}"; done
+
+cd /home/brandesa/mt/JOSH/data/runs/walking-s2-gym-agg && for d in josh_*; do [ -d "$d" ] || continue; base="${d%_*}"; suf="${d##*_}"; new="${base}-${suf}"; [ "$d" = "$new" ] || mv "$d" "$new"; done
