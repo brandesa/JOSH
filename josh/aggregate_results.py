@@ -263,7 +263,7 @@ if __name__ == "__main__":
     # save_result["conf_hw"] = np.stack([x["conf_hw"] for x in result.frame_result if "conf_hw" in x], axis=0)
     save_result["intrinsics"] = result.intrinsics
     save_result["img_idx"] = all_idx
-    save_result["pred_smpl"] = [x["pred_smpl"] for x in result.frame_result]
+    # save_result["pred_smpl"] = [x["pred_smpl"] for x in result.frame_result]
     save_result["pred_joints"] = [x["pred_joints"] for x in result.frame_result]
     # save_result["point_cloud"] = result.point_cloud
     save_result["img_size"] = result.img_size
